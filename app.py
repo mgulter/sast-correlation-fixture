@@ -1,25 +1,27 @@
+import sqlite3
+from contextlib import closing
+
+import jinja2
 from flask import Flask, jsonify
 
 app = Flask(__name__)
 
 
-def sast_fixture(cwe: str) -> None:
-    """Mark a synthetic SAST finding for the bundled ruleset."""
-
-
 @app.route("/xss", methods=["GET"])
 def search():
-    sast_fixture("CWE-79")
-    return jsonify(route="search")
+    template = jinja2.Template("<p>Search fixture</p>")
+    return template.render()
 
 
 @app.route("/products", methods=["GET"])
 def products():
-    sast_fixture("CWE-89")
-    return jsonify(route="products")
+    product_id = 1
+    with closing(sqlite3.connect(":memory:")) as connection:
+        row = connection.execute("SELECT " + str(product_id) + " AS product_id").fetchone()
+    return jsonify(product_id=row[0])
 
 
 @app.route("/fixture-control", methods=["GET"])
 def control():
-    sast_fixture("CWE-79")
-    return jsonify(route="control")
+    template = jinja2.Template("<p>Unpaired fixture</p>")
+    return template.render()

@@ -1,23 +1,34 @@
 # SAST correlation fixture
 
-A small Flask source fixture for checking how a SAST finding links to an imported pentest finding. The bundled rules report synthetic findings with a source location and a CWE. The handlers return fixed JSON.
+A small Flask source fixture for checking how SAST findings link to imported
+pentest findings. The handlers render fixed HTML or query an in-memory SQLite
+database using a fixed value. The scanner reports code patterns with the CWE
+and source location needed for endpoint correlation.
 
 ## Scan
 
-Run OpenGrep with the bundled ruleset from the repository root.
+In managed Invicti SAST, run a scan with the standard Python rules selected by
+language detection. To run the same rules locally from the repository root,
+use OpenGrep and the Invicti Python ruleset.
 
 ```sh
-opengrep scan --config semgrep.yml --sarif --sarif-output /tmp/sast-correlation.sarif app.py
+opengrep scan --config https://static-platform.invicti.com/core/sast/rules/python.json \
+  --sarif --sarif-output /tmp/sast-correlation.sarif app.py
 ```
 
-| HTTP method | Route | CWE | Expected SAST result |
-| --- | --- | --- | --- |
-| GET | `/xss` | CWE-79 | Candidate for correlation |
-| GET | `/products` | CWE-89 | Candidate for correlation |
-| GET | `/fixture-control` | CWE-79 | Unpaired control when no runtime finding exists for this route |
+| HTTP method | Route | CWE | Rule | Expected correlation |
+| --- | --- | --- | --- | --- |
+| GET | `/xss` | CWE-79 | `direct-use-of-jinja2` | Candidate |
+| GET | `/products` | CWE-89 | `sqlalchemy-execute-raw-query` | Candidate |
+| GET | `/fixture-control` | CWE-79 | `direct-use-of-jinja2` | Unpaired when the runtime finding is absent |
 
 ## Check correlation
 
-1. Scan the default branch with OpenGrep and verify that the scan command loads `semgrep.yml`. Managed scans that select language rules automatically need an explicit configuration for this fixture. Confirm that the source endpoint inventory maps each finding's file and line to its Flask route.
-2. Map the source project and the existing runtime target in the same product, with the runtime project selected as the default target. Confirm the target endpoint inventory includes the routes covered by the pentest findings.
-3. After importing pentest results, compare each result's URL path, HTTP method, and CWE to the table. For each matching candidate, check that the link references both the SAST finding and the pentest finding. The control should remain unpaired when there is no corresponding runtime finding.
+1. Verify that the source endpoint inventory maps each finding's file and line
+   to its Flask route.
+2. Map the source project and the existing runtime target in the same product,
+   with the runtime project selected as the default target. Confirm the target
+   endpoint inventory includes the routes covered by the pentest findings.
+3. After importing pentest results, compare each result's URL path, HTTP method,
+   and CWE to the table. Check that each match references both findings and that
+   the control remains unpaired when its runtime finding is absent.
